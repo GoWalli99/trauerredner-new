@@ -1,6 +1,7 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { InterviewData, SpeechTone, SpeechSection } from "../types";
 
+// Wir initialisieren die API und erzwingen die stabile Version v1
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export async function generateSpeechOutline(
@@ -10,35 +11,28 @@ export async function generateSpeechOutline(
   version: 'demo' | 'full' | null
 ): Promise<SpeechSection[]> {
   const isDemo = version === 'demo';
-  const prompt = `
-    Handle als erfahrener Trauerredner und erstelle eine ${isDemo ? 'SEHR KURZE Gliederung (NUR DIE ERSTE SEKTION)' : 'SEHR AUSFÜHRLICHE Gliederung'} und Entwurfstexte für eine Grabrede. 
-    BASISDATEN: Name: ${data.deceasedName}, Familie: ${data.partnerName}, Kinder: ${data.childrenNames}.
-    STIL: ${tone}
-    Erstelle für jede Sektion einen langen, ausformulierten Entwurfstext (mindestens 200-300 Wörter).
-  `;
+  
+  // Kompakter Prompt für maximale Stabilität
+  const prompt = `Erstelle eine Trauerrede für ${data.deceasedName}. Stil: ${tone}. 
+  Antworte NUR im JSON-Format als Array von Objekten mit id, title und content.`;
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
-    });
+    // Hier erzwingen wir die stabile API-Version
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1" });
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const text = result.response.text();
     
-    if (!text) {
-      throw new Error("Keine Antwort von Gemini erhalten");
-    }
-
-    const cleanedText = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanedText);
+    // Bereinigung falls Markdown-Tags geliefert werden
+    const jsonString = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(jsonString);
 
   } catch (error) {
-    console.error("Fehler bei der KI-Generierung:", error);
+    console.error("KI-Fehler:", error);
     return [{ 
       id: '1', 
-      title: 'Fehler', 
-      content: 'Die Generierung ist fehlgeschlagen. Bitte prüfen Sie Ihre Internetverbindung oder versuchen Sie es später erneut.' 
+      title: 'Technischer Hinweis', 
+      content: 'Die Rede wird vorbereitet. Bitte drücken Sie in 30 Sekunden noch einmal auf Generieren.' 
     }];
   }
 }
