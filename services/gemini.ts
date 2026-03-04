@@ -1,3 +1,27 @@
+try {
+    // Wir fordern explizit das stabile Modell an
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-pro",
+    });
+
+    // Hier nutzen wir die Standard-Generierung ohne die Beta-Schema-Einschränkung, 
+    // um den 404-Fehler zu umgehen
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    if (!text) {
+      throw new Error("No content received from Gemini API");
+    }
+
+    // Wir parsen das Ergebnis. Falls Gemini Markdown-Tags (```json) mitschickt, 
+    // bereinigen wir diese kurz:
+    const cleanedText = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleanedText);
+
+  } catch (error) {
+    console.error("Fehler bei der KI-Generierung:", error);
+    // ... (Ihr bestehender Fehler-Return)
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { InterviewData, SpeechTone, SpeechSection } from "../types";
 
