@@ -9,7 +9,9 @@ export async function generateSpeechOutline(
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-  const prompt = `Erstelle eine Trauerrede für ${data.deceasedName}. Stil: ${tone}. Antworte NUR als valides JSON-Array mit Objekten, die die Felder id, title und content haben.`;
+  // Wir bitten die KI, nur das reine Array ohne Markdown-Zusätze zu schicken
+  const prompt = `Erstelle eine Trauerrede für ${data.deceasedName}. Stil: ${tone}. 
+  Antworte ausschließlich mit einem validen JSON-Array. Beispiel: [{"id": "1", "title": "Einleitung", "content": "Text..."}]`;
 
   try {
     const response = await fetch(url, {
@@ -22,21 +24,28 @@ export async function generateSpeechOutline(
 
     const result = await response.json();
     
-    // Sichereres Auslesen der Antwort
-    if (result.candidates && result.candidates[0] && result.candidates[0].content) {
-      const text = result.candidates[0].content.parts[0].text;
-      const jsonString = text.replace(/```json|```/g, "").trim();
-      return JSON.parse(jsonString);
-    } else {
-      throw new Error("Unerwartetes Antwortformat von Google");
+    // Wir prüfen alle Ebenen der Google-Antwort ab
+    const candidate = result.candidates?.[0];
+    const rawText = candidate?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      console.error("Roher Antwort-Inhalt:", result);
+      throw new Error("Keine Text-Antwort gefunden");
     }
 
+    // Wir entfernen ALLES, was kein JSON ist (z.B. ```json ... ```)
+    const jsonStart = rawText.indexOf('[');
+    const jsonEnd = rawText.lastIndexOf(']') + 1;
+    const cleanJson = rawText.substring(jsonStart, jsonEnd);
+
+    return JSON.parse(cleanJson);
+
   } catch (error) {
-    console.error("KI-Fehler Details:", error);
+    console.error("Detail-Fehler:", error);
     return [{ 
       id: '1', 
       title: 'Fast geschafft', 
-      content: 'Die Verbindung steht! Bitte laden Sie die Seite einmal neu und versuchen Sie es noch einmal.' 
+      content: 'Die KI hat geantwortet, aber das Format war noch nicht ideal. Bitte klicken Sie einfach noch einmal auf Generieren.' 
     }];
   }
 }
