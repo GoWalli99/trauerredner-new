@@ -7,33 +7,24 @@ export async function generateSpeechOutline(
   version: 'demo' | 'full' | null
 ): Promise<SpeechSection[]> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim(); 
-  
-  // Wir wechseln auf das stabilere gemini-1.0-pro Modell
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${apiKey}`;
-
-  const prompt = `Erstelle eine Trauerrede für ${data.deceasedName}. Stil: ${tone}.`;
+  // Stabile URL für neue Projekte
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: `Schreibe eine Trauerrede für ${data.deceasedName}.` }] }]
       })
     });
 
     const result = await response.json();
-    
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
+    if (result.error) throw new Error(result.error.message);
 
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("Keine Antwort von der KI erhalten.");
-
+    const text = result.candidates[0].content.parts[0].text;
     return [{ id: '1', title: 'Ihre Trauerrede', content: text }];
-
   } catch (error: any) {
-    return [{ id: '1', title: 'Diagnose', content: `Fehler: ${error.message}` }];
+    return [{ id: '1', title: 'Fehler-Diagnose', content: error.message }];
   }
 }
