@@ -1,9 +1,8 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { InterviewData, SpeechTone, SpeechSection } from "../types";
 
-// Initialize the GoogleGenAI client using the API key from environment variables.
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+// Initialisierung mit dem VITE-Präfix für Vercel
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export async function generateSpeechOutline(
   data: InterviewData,
@@ -75,19 +74,18 @@ export async function generateSpeechOutline(
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview", // Complex task requires high-quality reasoning
-      contents: prompt,
-      config: {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-pro",
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
+          type: SchemaType.ARRAY,
           items: {
-            type: Type.OBJECT,
+            type: SchemaType.OBJECT,
             properties: {
-              id: { type: Type.STRING },
-              title: { type: Type.STRING },
-              content: { type: Type.STRING }
+              id: { type: SchemaType.STRING },
+              title: { type: SchemaType.STRING },
+              content: { type: SchemaType.STRING }
             },
             required: ["id", "title", "content"]
           }
@@ -95,7 +93,9 @@ export async function generateSpeechOutline(
       }
     });
 
-    const text = response.text;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    
     if (!text) {
       throw new Error("No content received from Gemini API");
     }
@@ -103,6 +103,10 @@ export async function generateSpeechOutline(
     return JSON.parse(text);
   } catch (error) {
     console.error("Fehler bei der KI-Generierung:", error);
-    return [{ id: '1', title: 'Fehler', content: 'Die Generierung ist fehlgeschlagen. Bitte prüfen Sie Ihre Internetverbindung oder versuchen Sie es später erneut.' }];
+    return [{ 
+      id: '1', 
+      title: 'Fehler', 
+      content: 'Die Generierung ist fehlgeschlagen. Bitte prüfen Sie Ihre Internetverbindung oder versuchen Sie es später erneut.' 
+    }];
   }
 }
