@@ -7,8 +7,9 @@ export async function generateSpeechOutline(
   version: 'demo' | 'full' | null
 ): Promise<SpeechSection[]> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  // Wir nutzen v1, da v1beta laut Bild 15 und 16 Fehlermeldungen gab
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  
+  // Wechsel auf das stabilere gemini-pro Modell
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
   const prompt = `Handle als erfahrener Trauerredner. Erstelle eine einfühlsame Rede für ${data.deceasedName}. 
   Stil: ${tone}. Religiöser Bezug: ${religious}. 
@@ -25,7 +26,6 @@ export async function generateSpeechOutline(
 
     const result = await response.json();
     
-    // Falls Google einen Fehler wie in Bild 20 meldet
     if (result.error) {
       throw new Error(result.error.message || "API Fehler");
     }
@@ -34,10 +34,9 @@ export async function generateSpeechOutline(
 
     if (!rawText) throw new Error("Keine Antwort erhalten");
 
-    // Wir geben den Text einfach direkt aus, um JSON-Probleme (Bild 19) zu umgehen
     return [{ id: '1', title: 'Ihre persönliche Trauerrede', content: rawText }];
 
   } catch (error: any) {
-    return [{ id: '1', title: 'Status', content: `Fehler: ${error.message}. Bitte Key prüfen.` }];
+    return [{ id: '1', title: 'Status', content: `Fehler: ${error.message}. Bitte versuchen Sie es gleich noch einmal.` }];
   }
 }
