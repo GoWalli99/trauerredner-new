@@ -8,10 +8,10 @@ export async function generateSpeechOutline(
 ): Promise<SpeechSection[]> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   
-  // Wir nutzen die absolute Standard-URL für stabile Projekte
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+  // Wir nutzen gemini-1.0-pro - das "Ur-Modell", das fast immer freigeschaltet ist
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${apiKey}`;
 
-  const prompt = `Handle als Trauerredner. Erstelle eine Rede für ${data.deceasedName}. Stil: ${tone}. Antworte mit Text.`;
+  const prompt = `Erstelle eine kurze Trauerrede für ${data.deceasedName}. Stil: ${tone}.`;
 
   try {
     const response = await fetch(url, {
@@ -29,11 +29,11 @@ export async function generateSpeechOutline(
     }
 
     const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) throw new Error("Keine Antwort von der KI");
+    if (!rawText) throw new Error("Keine Antwort erhalten");
 
     return [{ id: '1', title: 'Ihre Trauerrede', content: rawText }];
 
   } catch (error: any) {
-    return [{ id: '1', title: 'Status', content: `Fehler: ${error.message}.` }];
+    return [{ id: '1', title: 'Status', content: `Fehler: ${error.message}` }];
   }
 }
