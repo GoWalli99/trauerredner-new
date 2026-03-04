@@ -1,31 +1,6 @@
-try {
-    // Wir fordern explizit das stabile Modell an
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
-    });
-
-    // Hier nutzen wir die Standard-Generierung ohne die Beta-Schema-Einschränkung, 
-    // um den 404-Fehler zu umgehen
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    if (!text) {
-      throw new Error("No content received from Gemini API");
-    }
-
-    // Wir parsen das Ergebnis. Falls Gemini Markdown-Tags (```json) mitschickt, 
-    // bereinigen wir diese kurz:
-    const cleanedText = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanedText);
-
-  } catch (error) {
-    console.error("Fehler bei der KI-Generierung:", error);
-    // ... (Ihr bestehender Fehler-Return)
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { InterviewData, SpeechTone, SpeechSection } from "../types";
 
-// Initialisierung mit dem VITE-Präfix für Vercel
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export async function generateSpeechOutline(
@@ -37,94 +12,27 @@ export async function generateSpeechOutline(
   const isDemo = version === 'demo';
   const prompt = `
     Handle als erfahrener Trauerredner und erstelle eine ${isDemo ? 'SEHR KURZE Gliederung (NUR DIE ERSTE SEKTION)' : 'SEHR AUSFÜHRLICHE Gliederung'} und Entwurfstexte für eine Grabrede. 
-    ${isDemo ? 'Da dies eine Demo-Version ist, erstelle NUR die erste Sektion (Begrüßung & Sammlung) mit etwa 200-300 Wörtern.' : 'Integriere alle Details empathisch und flüssig.'}
-
-    BASISDATEN:
-    Name: ${data.deceasedName} (${data.birthDate} in ${data.birthPlace} bis ${data.deathDate} in ${data.deathPlace})
-    Familie: Partner ${data.partnerName}, Ehe-Details: ${data.marriageDetails}, Kennenlernen: ${data.partnerMeeting}
-    Kinder: ${data.childrenNames}, Enkel: ${data.grandchildrenNames}
-    Eltern: ${data.parentsNames}, Geschwister: ${data.siblingsDetails}, Wievieltes Kind: ${data.birthOrder}
-    Krankheiten/Unterstützer: ${data.medicalSupporters}
-    Religion: ${data.religion} (${religious})
-    Vereine: ${data.clubMemberships}
-    Sonstiges (Grunddaten): ${data.otherGrunddaten}
-
-    BIOGRAFIE & LEBENSWEG:
-    Jugend: ${data.bio_youth_details}
-    Ursprünglicher Beruf: ${data.bio_original_profession}
-    Qualifikationen: ${data.bio_qualifications}
-    Zuletzt tätig als: ${data.bio_last_profession}
-    Hobbys: ${data.bio_hobbies_list}
-    Gemeinsame Hobbys (Partner): ${data.bio_shared_hobbies}
-    Sonstiges: ${data.bio_other}
-
-    CHARAKTER & WESEN:
-    Charakter (3 Worte): ${data.personality_3words}
-    Typisches Wesen: ${data.personality_typical}
-    Eigenschaften: ${data.personality_traits}
-    Was glücklich machte: ${data.personality_happy}
-    Wohlfühlorte: ${data.personality_wellbeing_places}
-
-    WERTE & SCHLÜSSELERLEBNISSE:
-    Werte & Meilensteine: ${data.values_milestones}
-    Freunde & Kontakte: ${data.friends_contacts}
-    Krisen & Bewältigung: ${data.crises_handling}
-
-    ABSCHLUSS & WÜNSCHE:
-    Krankheit/Abschied: ${data.illness_death}
-    Unbedingt erwähnen: ${data.speech_must_haves}
-    TABUS (Nicht erwähnen!): ${data.speech_taboos}
-    Danksagungen & Namen: ${data.thanks_names}
-    Ergänzende Notizen: ${data.additional_notes}
-
+    BASISDATEN: Name: ${data.deceasedName}, Familie: ${data.partnerName}, Kinder: ${data.childrenNames}.
     STIL: ${tone}
-
-    DIE GLIEDERUNG MUSS FOLGENDE SEKTIONEN ENTHALTEN:
-    ${isDemo ? '1. Begrüßung & Sammlung (Bezug zum Ort und Anlass)' : `
-    1. Begrüßung & Sammlung (Bezug zum Ort und Anlass)
-    2. Lebensrückblick (Die Reise von der Kindheit bis zum Lebensabend)
-    3. Der Mensch hinter den Daten (Wesen, Charakter, Humor)
-    4. Hobbys, Leidenschaften & Kleine Freuden (Ausführlich: Was das Herz erfüllte)
-    5. Werte, Spuren & Vermächtnis (Was bleibt von ${data.deceasedName}?)
-    6. Persönliche Anekdote & Würdigung (Ein lebendiges Bild zeichnen)
-    7. Trostgedanken & Letzter Abschied (Hinführung zur Beisetzung)
-    8. Schlussworte & Dank (Inkl. Namenserwähnungen der Angehörigen)
-    `}
-
-    Generiere für ${isDemo ? 'die erste Sektion' : 'JEDEN Punkt'} einen langen, ausformulierten Entwurfstext (mindestens 200-300 Wörter pro Sektion), kein reines Stichwortverzeichnis.
-    WICHTIG: Füge KEINE Hinweise, Disclaimers, Metatexte oder Anmerkungen zur Demo-Version oder zum Umfang in den generierten Text ein. Der Text soll direkt mit der Rede beginnen.
-
-    ${isDemo ? '' : 'ZUSÄTZLICH für die Vollversion: Integriere in die erste Sektion (Begrüßung) und in die letzte Sektion (Schlussworte) jeweils ein passendes, tiefgründiges Zitat eines Klassikers (z.B. Goethe, Schiller, Rilke etc.). Das Zitat muss flüssig in den Text eingebaut werden und der Autor muss namentlich genannt werden (z.B. "Wie Goethe schon sagte...").'}
+    Erstelle für jede Sektion einen langen, ausformulierten Entwurfstext (mindestens 200-300 Wörter).
   `;
 
   try {
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-pro",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.ARRAY,
-          items: {
-            type: SchemaType.OBJECT,
-            properties: {
-              id: { type: SchemaType.STRING },
-              title: { type: SchemaType.STRING },
-              content: { type: SchemaType.STRING }
-            },
-            required: ["id", "title", "content"]
-          }
-        }
-      }
     });
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const response = await result.response;
+    const text = response.text();
     
     if (!text) {
-      throw new Error("No content received from Gemini API");
+      throw new Error("Keine Antwort von Gemini erhalten");
     }
 
-    return JSON.parse(text);
+    const cleanedText = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleanedText);
+
   } catch (error) {
     console.error("Fehler bei der KI-Generierung:", error);
     return [{ 
