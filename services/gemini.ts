@@ -7,11 +7,12 @@ export async function generateSpeechOutline(
   version: 'demo' | 'full' | null
 ): Promise<SpeechSection[]> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // Wir nutzen v1, da v1beta laut Bild 15 und 16 Fehlermeldungen gab
   const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-  // Wir bitten die KI, nur das reine Array ohne Markdown-Zusätze zu schicken
-  const prompt = `Erstelle eine Trauerrede für ${data.deceasedName}. Stil: ${tone}. 
-  Antworte ausschließlich mit einem validen JSON-Array. Beispiel: [{"id": "1", "title": "Einleitung", "content": "Text..."}]`;
+  const prompt = `Handle als erfahrener Trauerredner. Erstelle eine einfühlsame Rede für ${data.deceasedName}. 
+  Stil: ${tone}. Religiöser Bezug: ${religious}. 
+  Strukturiere die Rede in klare Abschnitte (Einleitung, Lebensweg, Abschied).`;
 
   try {
     const response = await fetch(url, {
@@ -24,28 +25,19 @@ export async function generateSpeechOutline(
 
     const result = await response.json();
     
-    // Wir prüfen alle Ebenen der Google-Antwort ab
-    const candidate = result.candidates?.[0];
-    const rawText = candidate?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      console.error("Roher Antwort-Inhalt:", result);
-      throw new Error("Keine Text-Antwort gefunden");
+    // Falls Google einen Fehler wie in Bild 20 meldet
+    if (result.error) {
+      throw new Error(result.error.message || "API Fehler");
     }
 
-    // Wir entfernen ALLES, was kein JSON ist (z.B. ```json ... ```)
-    const jsonStart = rawText.indexOf('[');
-    const jsonEnd = rawText.lastIndexOf(']') + 1;
-    const cleanJson = rawText.substring(jsonStart, jsonEnd);
+    const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    return JSON.parse(cleanJson);
+    if (!rawText) throw new Error("Keine Antwort erhalten");
 
-  } catch (error) {
-    console.error("Detail-Fehler:", error);
-    return [{ 
-      id: '1', 
-      title: 'Fast geschafft', 
-      content: 'Die KI hat geantwortet, aber das Format war noch nicht ideal. Bitte klicken Sie einfach noch einmal auf Generieren.' 
-    }];
+    // Wir geben den Text einfach direkt aus, um JSON-Probleme (Bild 19) zu umgehen
+    return [{ id: '1', title: 'Ihre persönliche Trauerrede', content: rawText }];
+
+  } catch (error: any) {
+    return [{ id: '1', title: 'Status', content: `Fehler: ${error.message}. Bitte Key prüfen.` }];
   }
 }
