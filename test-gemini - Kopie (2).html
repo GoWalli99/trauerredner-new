@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Gemini API Test</h2>
+    <button onclick="testKey()">API Jetzt Testen</button>
+    <div id="log" style="white-space: pre-wrap; margin-top: 20px; border: 1px solid #ccc; padding: 10px;">
+        Ergebnis erscheint hier...
+    </div>
+
+    <script>
+        async function testKey() {
+            const log = document.getElementById('log');
+            // FÜGEN SIE HIER IHREN NEUEN KEY EIN (nur zum Testen!)
+            const apiKey = "AIzaSyALbTPV6ywZaAhcuXS75DPaSOnX0OOjbHM"; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+
+            log.innerText = "Sende Anfrage...";
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: "Hallo, antwortest du?" }] }]
+                    })
+                });
+
+                const result = await response.json();
+                log.innerText = JSON.stringify(result, null, 2);
+            } catch (error) {
+                log.innerText = "Netzwerkfehler: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
