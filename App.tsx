@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Share2, MoreVertical } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import { 
   INITIAL_INTERVIEW, 
   AppState, 
@@ -1307,6 +1308,7 @@ export default function App() {
           />
         )}
       </main>
+      <Analytics />
     </div>
   );
 }
