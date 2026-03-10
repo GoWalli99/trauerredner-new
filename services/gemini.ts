@@ -1,9 +1,8 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";const ai = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY);
 import { InterviewData, SpeechTone, SpeechSection } from "../types";
 
 // Initialize the GoogleGenAI client using the API key from environment variables.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export async function generateSpeechOutline(
   data: InterviewData,
