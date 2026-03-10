@@ -1,8 +1,10 @@
-import { GoogleGenAI, Type } from "@google/genai";const ai = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY);
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { InterviewData, SpeechTone, SpeechSection } from "../types";
 
-// Initialize the GoogleGenAI client using the API key from environment variables.
-const ai = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY);
+// Initialisierung mit dem korrekten VITE-Namen für Vercel
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
 
 export async function generateSpeechOutline(
   data: InterviewData,
@@ -11,6 +13,15 @@ export async function generateSpeechOutline(
   version: 'demo' | 'full' | null
 ): Promise<SpeechSection[]> {
   const isDemo = version === 'demo';
+  
+  // Wir nutzen das Modell, das Sie erfolgreich im AI Studio getestet haben
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.0-flash",
+    generationConfig: {
+      responseMimeType: "application/json",
+    }
+  });
+
   const prompt = `
     Handle als erfahrener Trauerredner und erstelle eine ${isDemo ? 'SEHR KURZE Gliederung (NUR DIE ERSTE SEKTION)' : 'SEHR AUSFÜHRLICHE Gliederung'} und Entwurfstexte für eine Grabrede. 
     ${isDemo ? 'Da dies eine Demo-Version ist, erstelle NUR die erste Sektion (Begrüßung & Sammlung) mit etwa 200-300 Wörtern.' : 'Integriere alle Details empathisch und flüssig.'}
@@ -68,40 +79,31 @@ export async function generateSpeechOutline(
     `}
 
     Generiere für ${isDemo ? 'die erste Sektion' : 'JEDEN Punkt'} einen langen, ausformulierten Entwurfstext (mindestens 200-300 Wörter pro Sektion), kein reines Stichwortverzeichnis.
-    WICHTIG: Füge KEINE Hinweise, Disclaimers, Metatexte oder Anmerkungen zur Demo-Version oder zum Umfang in den generierten Text ein. Der Text soll direkt mit der Rede beginnen.
+    WICHTIG: Gib das Ergebnis NUR als JSON-Array aus. Jedes Objekt im Array muss die Felder "id", "title" und "content" haben.
+    Der Text soll direkt mit der Rede beginnen.
 
-    ${isDemo ? '' : 'ZUSÄTZLICH für die Vollversion: Integriere in die erste Sektion (Begrüßung) und in die letzte Sektion (Schlussworte) jeweils ein passendes, tiefgründiges Zitat eines Klassikers (z.B. Goethe, Schiller, Rilke etc.). Das Zitat muss flüssig in den Text eingebaut werden und der Autor muss namentlich genannt werden (z.B. "Wie Goethe schon sagte...").'}
+    ${isDemo ? '' : 'ZUSÄTZLICH für die Vollversion: Integriere in die erste Sektion (Begrüßung) und in die letzte Sektion (Schlussworte) jeweils ein passendes, tiefgründiges Zitat eines Klassikers (z.B. Goethe, Schiller, Rilke etc.). Das Zitat muss flüssig in den Text eingebaut werden und der Autor muss namentlich genannt werden.'}
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview", // Complex task requires high-quality reasoning
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              title: { type: Type.STRING },
-              content: { type: Type.STRING }
-            },
-            required: ["id", "title", "content"]
-          }
-        }
-      }
-    });
-
-    const text = response.text;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
     if (!text) {
       throw new Error("No content received from Gemini API");
     }
 
-    return JSON.parse(text);
+    // Bereinigung des Texts, falls Gemini Markdown-Code-Blocks (```json) mitsendet
+    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanedText);
+    
   } catch (error) {
     console.error("Fehler bei der KI-Generierung:", error);
-    return [{ id: '1', title: 'Fehler', content: 'Die Generierung ist fehlgeschlagen. Bitte prüfen Sie Ihre Internetverbindung oder versuchen Sie es später erneut.' }];
+    return [{ 
+      id: '1', 
+      title: 'Fehler', 
+      content: 'Die Generierung ist fehlgeschlagen. Bitte prüfen Sie Ihre API-Einstellungen in Vercel oder versuchen Sie es später erneut.' 
+    }];
   }
 }
