@@ -1,5 +1,3 @@
-import { InterviewData, SpeechTone, SpeechSection } from "../types";
-
 export async function generateSpeechOutline(
   data: InterviewData,
   religious: string,
@@ -9,7 +7,6 @@ export async function generateSpeechOutline(
   const isDemo = version === 'demo';
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim(); 
   
-  // Wir nutzen exakt Ihre funktionierende URL und das Modell gemini-2.5-flash
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const prompt = `
@@ -68,9 +65,15 @@ export async function generateSpeechOutline(
     8. Schlussworte & Dank (Inkl. Namenserwähnungen der Angehörigen)
     `}
 
-    WICHTIG: Gib das Ergebnis AUSSCHLIESSLICH als gültiges JSON-Array zurück. 
+    WICHTIG FÜR DIE VOLLVERSION (NICHT DEMO): 
+    - Integriere in den Text der Sektion 1 (Begrüßung) zu Beginn ein passendes, tiefgründiges Zitat eines Klassikers (z.B. Goethe, Rilke).
+    - Integriere in den Text der Sektion 8 (Schlussworte) am Ende ein weiteres Zitat.
+    - Nenne den Autor namentlich im fließenden Text.
+
+    AUSGABE-FORMAT:
+    Gib das Ergebnis AUSSCHLIESSLICH als gültiges JSON-Array zurück. 
     Jedes Objekt im Array muss exakt diese Felder haben: "id", "title" und "content".
-    Kein einleitender Text, keine Markdown-Formatierung, nur das reine JSON-Array.
+    Kein einleitender Text, kein Markdown, nur das reine JSON.
   `;
 
   try {
@@ -91,10 +94,7 @@ export async function generateSpeechOutline(
       throw new Error(result.error.message);
     }
 
-    // Den Text aus der Google-Antwort extrahieren
     const rawText = result.candidates[0].content.parts[0].text;
-    
-    // Sicherstellen, dass wir nur das JSON-Array parsen
     const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanedText);
 
@@ -103,7 +103,7 @@ export async function generateSpeechOutline(
     return [{ 
       id: '1', 
       title: 'Fehler-Diagnose', 
-      content: `Die Verbindung zu Gemini ist fehlgeschlagen: ${error.message}. Bitte prüfen Sie den VITE_GEMINI_API_KEY in Vercel.` 
+      content: `Verbindung fehlgeschlagen: ${error.message}` 
     }];
   }
 }
