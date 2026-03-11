@@ -1,10 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { InterviewData, SpeechTone, SpeechSection } from "../types";
-
-// Initialisierung mit dem korrekten VITE-Namen für Vercel
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
 
 export async function generateSpeechOutline(
   data: InterviewData,
@@ -13,14 +7,10 @@ export async function generateSpeechOutline(
   version: 'demo' | 'full' | null
 ): Promise<SpeechSection[]> {
   const isDemo = version === 'demo';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim(); 
   
-  // Wir nutzen das Modell, das Sie erfolgreich im AI Studio getestet haben
-  const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash",
-    generationConfig: {
-      responseMimeType: "application/json",
-    }
-  });
+  // Wir nutzen exakt Ihre funktionierende URL und das Modell gemini-2.5-flash
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const prompt = `
     Handle als erfahrener Trauerredner und erstelle eine ${isDemo ? 'SEHR KURZE Gliederung (NUR DIE ERSTE SEKTION)' : 'SEHR AUSFÜHRLICHE Gliederung'} und Entwurfstexte für eine Grabrede. 
@@ -78,32 +68,42 @@ export async function generateSpeechOutline(
     8. Schlussworte & Dank (Inkl. Namenserwähnungen der Angehörigen)
     `}
 
-    Generiere für ${isDemo ? 'die erste Sektion' : 'JEDEN Punkt'} einen langen, ausformulierten Entwurfstext (mindestens 200-300 Wörter pro Sektion), kein reines Stichwortverzeichnis.
-    WICHTIG: Gib das Ergebnis NUR als JSON-Array aus. Jedes Objekt im Array muss die Felder "id", "title" und "content" haben.
-    Der Text soll direkt mit der Rede beginnen.
-
-    ${isDemo ? '' : 'ZUSÄTZLICH für die Vollversion: Integriere in die erste Sektion (Begrüßung) und in die letzte Sektion (Schlussworte) jeweils ein passendes, tiefgründiges Zitat eines Klassikers (z.B. Goethe, Schiller, Rilke etc.). Das Zitat muss flüssig in den Text eingebaut werden und der Autor muss namentlich genannt werden.'}
+    WICHTIG: Gib das Ergebnis AUSSCHLIESSLICH als gültiges JSON-Array zurück. 
+    Jedes Objekt im Array muss exakt diese Felder haben: "id", "title" und "content".
+    Kein einleitender Text, keine Markdown-Formatierung, nur das reine JSON-Array.
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    const result = await response.json();
     
-    if (!text) {
-      throw new Error("No content received from Gemini API");
+    if (result.error) {
+      throw new Error(result.error.message);
     }
 
-    // Bereinigung des Texts, falls Gemini Markdown-Code-Blocks (```json) mitsendet
-    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanedText);
+    // Den Text aus der Google-Antwort extrahieren
+    const rawText = result.candidates[0].content.parts[0].text;
     
-  } catch (error) {
+    // Sicherstellen, dass wir nur das JSON-Array parsen
+    const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanedText);
+
+  } catch (error: any) {
     console.error("Fehler bei der KI-Generierung:", error);
     return [{ 
       id: '1', 
-      title: 'Fehler', 
-      content: 'Die Generierung ist fehlgeschlagen. Bitte prüfen Sie Ihre API-Einstellungen in Vercel oder versuchen Sie es später erneut.' 
+      title: 'Fehler-Diagnose', 
+      content: `Die Verbindung zu Gemini ist fehlgeschlagen: ${error.message}. Bitte prüfen Sie den VITE_GEMINI_API_KEY in Vercel.` 
     }];
   }
 }
