@@ -10,7 +10,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^1.41.0",
+    "@google/genai": "^1.52.0",
+    "html2pdf.js": "^0.14.0",
     "jspdf": "^4.2.0",
     "lucide-react": "^0.575.0",
     "react": "^19.2.4",
